@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup 2022 Playoff</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .tournament-bracket {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            width: 100%;
+            position: relative;
+            min-height: 600px;
+        }
+
+        .round {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            width: 200px;
+            position: relative;
+            height: 100%;
+        }
+
+        .match {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin: 10px;
+            padding: 10px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .team {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .team:last-child {
+            border-bottom: none;
+        }
+
+        .winner {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .team-name {
+            flex-grow: 1;
+        }
+
+        .team-score {
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .round-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .connector {
+            position: absolute;
+            height: 2px;
+            background-color: #aaa;
+            z-index: 1;
+        }
+        
+        .connector-vertical {
+            position: absolute;
+            width: 2px;
+            background-color: #aaa;
+            z-index: 1;
+        }
+
+        .third-place-match {
+            margin-top: 80px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vyřazovací fáze</h1>
+    <div class="tournament-bracket" id="bracket">
+        <!-- Bracket will be dynamically inserted here -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('https://worldcupjson.net/matches')
+                .then(response => response.json())
+                .then(data => {
+                    const playoffMatches = data.filter(match => match.stage_name !== 'First stage');
+                    displayBracket(playoffMatches);
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        });
+
+        function displayBracket(matches) {
+            const bracket = document.getElementById('bracket');
+            
+            // Define the rounds in order
+            const rounds = [
+                { id: 'Round of 16', name: 'Osmifinále' },
+                { id: 'Quarter-final', name: 'Čtvrtfinále' },
+                { id: 'Semi-final', name: 'Semifinále' },
+                { id: 'Final', name: 'Finále' }
+            ];
+            
+            // Create a column for each round
+            const roundElements = [];
+            rounds.forEach(round => {
+                const roundMatches = matches.filter(match => match.stage_name === round.id);
+                if (roundMatches.length > 0) {
+                    const roundElement = document.createElement('div');
+                    roundElement.className = 'round';
+                    roundElement.dataset.stage = round.id;
+                    
+                    const roundTitle = document.createElement('div');
+                    roundTitle.className = 'round-title';
+                    roundTitle.textContent = round.name;
+                    roundElement.appendChild(roundTitle);
+                    
+                    // Sort matches by date
+                    roundMatches.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+                    
+                    roundMatches.forEach((match, index) => {
+                        const matchElement = document.createElement('div');
+                        matchElement.className = 'match';
+                        matchElement.dataset.matchId = match.id;
+                        matchElement.dataset.matchIndex = index;
+                        
+                        const homeTeam = document.createElement('div');
+                        homeTeam.className = 'team';
+                        if (match.winner === 'home') homeTeam.classList.add('winner');
+                        
+                        const homeTeamName = document.createElement('span');
+                        homeTeamName.className = 'team-name';
+                        homeTeamName.textContent = translateCountry(match.home_team.name);
+                        homeTeam.appendChild(homeTeamName);
+                        
+                        const homeTeamScore = document.createElement('span');
+                        homeTeamScore.className = 'team-score';
+                        homeTeamScore.textContent = match.home_team.goals;
+                        homeTeam.appendChild(homeTeamScore);
+                        
+                        matchElement.appendChild(homeTeam);
+                        
+                        const awayTeam = document.createElement('div');
+                        awayTeam.className = 'team';
+                        if (match.winner === 'away') awayTeam.classList.add('winner');
+                        
+                        const awayTeamName = document.createElement('span');
+                        awayTeamName.className = 'team-name';
+                        awayTeamName.textContent = translateCountry(match.away_team.name);
+                        awayTeam.appendChild(awayTeamName);
+                        
+                        const awayTeamScore = document.createElement('span');
+                        awayTeamScore.className = 'team-score';
+                        awayTeamScore.textContent = match.away_team.goals;
+                        awayTeam.appendChild(awayTeamScore);
+                        
+                        matchElement.appendChild(awayTeam);
+                        
+                        roundElement.appendChild(matchElement);
+                    });
+                    
+                    bracket.appendChild(roundElement);
+                    roundElements.push(roundElement);
+                }
+            });
+            
+            // Add third place match separately
+            const thirdPlaceMatch = matches.find(match => match.stage_name === 'Play-off for third place');
+            if (thirdPlaceMatch) {
+                const thirdPlaceContainer = document.createElement('div');
+                thirdPlaceContainer.className = 'third-place-match';
+                thirdPlaceContainer.id = 'third-place';
+                
+                const thirdPlaceTitle = document.createElement('div');
+                thirdPlaceTitle.className = 'round-title';
+                thirdPlaceTitle.textContent = 'O 3. místo';
+                thirdPlaceContainer.appendChild(thirdPlaceTitle);
+                
+                const matchElement = document.createElement('div');
+                matchElement.className = 'match';
+                
+                const homeTeam = document.createElement('div');
+                homeTeam.className = 'team';
+                if (thirdPlaceMatch.winner === 'home') homeTeam.classList.add('winner');
+                
+                const homeTeamName = document.createElement('span');
+                homeTeamName.className = 'team-name';
+                homeTeamName.textContent = translateCountry(thirdPlaceMatch.home_team.name);
+                homeTeam.appendChild(homeTeamName);
+                
+                const homeTeamScore = document.createElement('span');
+                homeTeamScore.className = 'team-score';
+                homeTeamScore.textContent = thirdPlaceMatch.home_team.goals;
+                homeTeam.appendChild(homeTeamScore);
+                
+                matchElement.appendChild(homeTeam);
+                
+                const awayTeam = document.createElement('div');
+                awayTeam.className = 'team';
+                if (thirdPlaceMatch.winner === 'away') awayTeam.classList.add('winner');
+                
+                const awayTeamName = document.createElement('span');
+                awayTeamName.className = 'team-name';
+                awayTeamName.textContent = translateCountry(thirdPlaceMatch.away_team.name);
+                awayTeam.appendChild(awayTeamName);
+                
+                const awayTeamScore = document.createElement('span');
+                awayTeamScore.className = 'team-score';
+                awayTeamScore.textContent = thirdPlaceMatch.away_team.goals;
+                awayTeam.appendChild(awayTeamScore);
+                
+                matchElement.appendChild(awayTeam);
+                
+                thirdPlaceContainer.appendChild(matchElement);
+                
+                // Append to body below the bracket
+                document.body.appendChild(thirdPlaceContainer);
+            }
+            
+            // After all rounds are rendered, adjust positions and draw connectors
+            setTimeout(() => {
+                adjustMatchPositions();
+                drawConnectors();
+                positionThirdPlaceMatch();
+            }, 100);
+        }
+
+        function positionThirdPlaceMatch() {
+            const finalRound = document.querySelector('.round[data-stage="Final"]');
+            const thirdPlaceMatch = document.getElementById('third-place');
+            
+            if (finalRound && thirdPlaceMatch) {
+                const finalRect = finalRound.getBoundingClientRect();
+                thirdPlaceMatch.style.position = 'absolute';
+                thirdPlaceMatch.style.left = finalRect.left + 'px';
+                thirdPlaceMatch.style.top = (finalRect.bottom + 50) + 'px';
+            }
+        }
+
+        function drawConnectors() {
+            // Clear any existing connectors
+            document.querySelectorAll('.connector, .connector-vertical').forEach(el => el.remove());
+            
+            const rounds = document.querySelectorAll('.round');
+            
+            for (let i = 0; i < rounds.length - 1; i++) {
+                const currentRound = rounds[i];
+                const nextRound = rounds[i + 1];
+                
+                const currentMatches = currentRound.querySelectorAll('.match');
+                const nextMatches = nextRound.querySelectorAll('.match');
+                
+                // For each pair of matches in current round, connect to one match in next round
+                for (let j = 0; j < currentMatches.length; j += 2) {
+                    if (j/2 < nextMatches.length) {
+                        const match1 = currentMatches[j];
+                        const match2 = j + 1 < currentMatches.length ? currentMatches[j + 1] : null;
+                        const targetMatch = nextMatches[j/2];
+                        
+                        // Get the positions relative to their containing rounds
+                        const match1Rect = match1.getBoundingClientRect();
+                        const match2Rect = match2 ? match2.getBoundingClientRect() : null;
+                        const targetRect = targetMatch.getBoundingClientRect();
+                        const currentRoundRect = currentRound.getBoundingClientRect();
+                        const nextRoundRect = nextRound.getBoundingClientRect();
+                        
+                        // Center points relative to their rounds
+                        const match1CenterY = match1.offsetTop + match1.offsetHeight/2;
+                        const match2CenterY = match2 ? match2.offsetTop + match2.offsetHeight/2 : match1CenterY;
+                        const targetCenterY = targetMatch.offsetTop + targetMatch.offsetHeight/2;
+                        
+                        // Create midpoint for the connecting lines
+                        const midX = (currentRound.offsetWidth + nextRound.offsetLeft - currentRound.offsetLeft) / 2;
+                        
+                        // Draw horizontal line from match1 to midpoint
+                        const conn1 = document.createElement('div');
+                        conn1.className = 'connector';
+                        conn1.style.left = `${match1.offsetWidth}px`;
+                        conn1.style.top = `${match1CenterY}px`;
+                        conn1.style.width = `${midX - match1.offsetWidth}px`;
+                        currentRound.appendChild(conn1);
+                        
+                        // If there's a second match, connect it too
+                        if (match2) {
+                            const conn2 = document.createElement('div');
+                            conn2.className = 'connector';
+                            conn2.style.left = `${match2.offsetWidth}px`;
+                            conn2.style.top = `${match2CenterY}px`;
+                            conn2.style.width = `${midX - match2.offsetWidth}px`;
+                            currentRound.appendChild(conn2);
+                            
+                            // Draw vertical connector in the current round
+                            const vConn = document.createElement('div');
+                            vConn.className = 'connector-vertical';
+                            vConn.style.left = `${midX}px`;
+                            vConn.style.top = `${Math.min(match1CenterY, match2CenterY)}px`;
+                            vConn.style.height = `${Math.abs(match2CenterY - match1CenterY)}px`;
+                            currentRound.appendChild(vConn);
+                        }
+                        
+                        // Draw horizontal line from midpoint to target match (in the next round)
+                        const conn3 = document.createElement('div');
+                        conn3.className = 'connector';
+                        conn3.style.left = `0`;
+                        conn3.style.top = `${targetCenterY}px`;
+                        conn3.style.width = `${nextRound.offsetWidth - targetMatch.offsetWidth - 10}px`;
+                        nextRound.appendChild(conn3);
+                    }
+                }
+            }
+        }
+
+        function translateCountry(name) {
+            const translations = {
+                'Qatar': 'Katar',
+                'Ecuador': 'Ekvádor',
+                'Senegal': 'Senegal',
+                'Netherlands': 'Nizozemsko',
+                'England': 'Anglie',
+                'Iran': 'Írán',
+                'United States': 'USA',
+                'Wales': 'Wales',
+                'Argentina': 'Argentina',
+                'Saudi Arabia': 'Saúdská Arábie',
+                'Mexico': 'Mexiko',
+                'Poland': 'Polsko',
+                'France': 'Francie',
+                'Australia': 'Austrálie',
+                'Denmark': 'Dánsko',
+                'Tunisia': 'Tunisko',
+                'Spain': 'Španělsko',
+                'Costa Rica': 'Kostarika',
+                'Germany': 'Německo',
+                'Japan': 'Japonsko',
+                'Belgium': 'Belgie',
+                'Canada': 'Kanada',
+                'Morocco': 'Maroko',
+                'Croatia': 'Chorvatsko',
+                'Brazil': 'Brazílie',
+                'Serbia': 'Srbsko',
+                'Switzerland': 'Švýcarsko',
+                'Cameroon': 'Kamerun',
+                'Portugal': 'Portugalsko',
+                'Ghana': 'Ghana',
+                'Uruguay': 'Uruguay',
+                'South Korea': 'Jižní Korea'
+            };
+            
+            return translations[name] || name;
+        }
+
+        function adjustMatchPositions() {
+            // First, reset any previously applied positioning
+            document.querySelectorAll('.match').forEach(match => {
+                match.style.position = '';
+                match.style.top = '';
+            });
+
+            const rounds = document.querySelectorAll('.round');
+            
+            // Make sure the first round is evenly distributed
+            const firstRound = rounds[0];
+            if (firstRound) {
+                const matches = firstRound.querySelectorAll('.match');
+                const totalHeight = firstRound.offsetHeight;
+                const matchHeight = matches[0]?.offsetHeight || 0;
+                const availableSpace = totalHeight - matchHeight * matches.length;
+                const spacing = availableSpace / (matches.length + 1);
+                
+                matches.forEach((match, i) => {
+                    match.style.position = 'absolute';
+                    match.style.top = `${spacing + i * (matchHeight + spacing)}px`;
+                    match.style.left = '10px';
+                });
+            }
+            
+            // Now position each subsequent round based on the positions of the previous round
+            for (let i = 1; i < rounds.length; i++) {
+                const prevRound = rounds[i-1];
+                const currentRound = rounds[i];
+                
+                const currentMatches = currentRound.querySelectorAll('.match');
+                
+                currentMatches.forEach((match, idx) => {
+                    // Each match connects to two matches from the previous round
+                    const sourceStartIdx = idx * 2;
+                    
+                    // Get the source matches from the previous round
+                    const prevMatches = prevRound.querySelectorAll('.match');
+                    
+                    if (sourceStartIdx < prevMatches.length) {
+                        const match1 = prevMatches[sourceStartIdx];
+                        const match2 = sourceStartIdx + 1 < prevMatches.length ? prevMatches[sourceStartIdx + 1] : match1;
+                        
+                        // Get the vertical center positions of the source matches
+                        const match1Top = match1.offsetTop;
+                        const match1Height = match1.offsetHeight;
+                        const match1Center = match1Top + match1Height / 2;
+                        
+                        const match2Top = match2.offsetTop;
+                        const match2Height = match2.offsetHeight;
+                        const match2Center = match2Top + match2Height / 2;
+                        
+                        // Position this match at the center between the two source matches
+                        const centerY = (match1Center + match2Center) / 2;
+                        match.style.position = 'absolute';
+                        match.style.top = `${centerY - match.offsetHeight / 2}px`;
+                        match.style.left = '10px';
+                    }
+                });
+            }
+            
+            // Now that positions are set, recalculate the total heights of rounds
+            // and adjust the containers if needed
+            const maxRoundHeight = Math.max(...Array.from(rounds).map(r => {
+                const matches = r.querySelectorAll('.match');
+                if (matches.length === 0) return 0;
+                
+                const lastMatch = matches[matches.length - 1];
+                return lastMatch.offsetTop + lastMatch.offsetHeight + 20; // Add padding
+            }));
+            
+            rounds.forEach(round => {
+                round.style.height = `${maxRoundHeight}px`;
+            });
+            
+            // Make sure round titles stay at the top
+            document.querySelectorAll('.round-title').forEach(title => {
+                title.style.position = 'absolute';
+                title.style.top = '0';
+                title.style.width = '100%';
+            });
+        }
+
+        // Redraw connectors when the window is scrolled or resized
+        window.addEventListener('scroll', () => {
+            // Small delay to ensure the browser has finished any layout changes
+            setTimeout(drawConnectors, 50);
+        });
+        
+        window.addEventListener('resize', () => {
+            // Reposition everything when the window is resized
+            setTimeout(() => {
+                adjustMatchPositions();
+                drawConnectors();
+                positionThirdPlaceMatch();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

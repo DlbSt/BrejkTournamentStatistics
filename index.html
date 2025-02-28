@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup 2022 Groups</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #groups-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .group-table {
+            border-collapse: collapse;
+            width: 300px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .group-table th, .group-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .group-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .group-table caption {
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="groups-container">
+        <!-- Tables will be dynamically inserted here -->
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('https://worldcupjson.net/teams')
+                .then(response => response.json())
+                .then(data => displayGroups(data.groups))
+                .catch(error => console.error('Error fetching data:', error));
+        });
+
+        function displayGroups(groups) {
+            const container = document.getElementById('groups-container');
+            for (const groupName in groups) {
+                const group = groups[groupName];
+                
+                // Sort teams by points (highest first)
+                group.teams.sort((a, b) => b.group_points - a.group_points);
+                
+                const table = document.createElement('table');
+                table.className = 'group-table';
+                table.innerHTML = `
+                    <caption>Skupina ${group.teams[0].group_letter}</caption>
+                    <thead>
+                        <tr>
+                            <th>Země</th>
+                            <th>Body</th>
+                            <th>Skóre</th>
+                            <th>Výhry</th>
+                            <th>Prohry</th>
+                            <th>Remízy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${group.teams.map(team => `
+                            <tr>
+                                <td>${team.country}</td>
+                                <td>${team.group_points}</td>
+                                <td>${team.goals_for}:${team.goals_against}</td>
+                                <td>${team.wins}</td>
+                                <td>${team.losses}</td>
+                                <td>${team.draws}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                `;
+                container.appendChild(table);
+            }
+        }
+    </script>
+</body>
+</html>
